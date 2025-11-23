@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>청년 정책 통합 타임라인</title>
-    <!-- Chosen Palette: Calm Blue & Neutral Slate -->
-    <!-- Application Structure Plan: A filter-first SPA with REAL DATA from Google Sheets. Users filter by 'Who' (status) and 'What' (category). Updates Dashboard, Timeline, and List views. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>청년 정책 통합 대시보드</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,604 +12,708 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* 기본 폰트 및 스크롤바 스타일 */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
         body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            -ms-overflow-style: none; /* IE and Edge */
-            scrollbar-width: none; /* Firefox */
+            font-family: 'Pretendard', sans-serif;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         body::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, and Opera */
+            display: none;
         }
         
-        /* Chart.js 컨테이너 스타일 */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px;
-            max-height: 300px;
+        /* 커스텀 스크롤바 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
-        /* 모달 스타일 */
-        .modal {
-            transition: opacity 0.25s ease, visibility 0.25s ease;
+        /* 사이드바 Sticky 설정 */
+        .sidebar-sticky {
+            position: sticky;
+            top: 24px; /* 상단 여백 */
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
         }
-        .modal-content {
-            transition: transform 0.25s ease;
+
+        /* 타임라인 바 스타일 */
+        .timeline-bar {
+            transition: all 0.2s;
+        }
+        .timeline-bar:hover {
+            transform: scale(1.01);
+            z-index: 10;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
-    <!-- 모달 (초기 숨김) -->
-    <div id="modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm opacity-0 invisible" onclick="closeModal()">
-        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95" onclick="event.stopPropagation()">
-            <!-- 모달 헤더 -->
-            <div class="p-6 border-b flex justify-between items-start bg-slate-50/70">
-                <div>
-                    <div class="flex gap-2 mb-2">
+    <!-- 상세 정보 모달 -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onclick="closeModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all scale-100" onclick="event.stopPropagation()">
+            <div class="p-6 border-b flex justify-between items-start bg-slate-50">
+                <div class="pr-4 w-full">
+                    <div class="flex gap-2 mb-3 flex-wrap">
                         <span id="modal-category" class="text-xs px-2 py-1 rounded font-bold"></span>
                         <span id="modal-dday" class="text-xs px-2 py-1 rounded font-bold"></span>
+                        <span id="modal-dept" class="text-xs px-2 py-1 rounded border bg-white text-slate-500"></span>
                     </div>
-                    <h2 id="modal-title" class="text-xl font-bold text-slate-900 leading-tight"></h2>
+                    <h2 id="modal-title" class="text-2xl font-bold text-slate-900 leading-snug"></h2>
                 </div>
-                <button onclick="closeModal()" class="p-1 hover:bg-slate-200 rounded-full transition-colors text-slate-500">&times;</button>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
             
-            <!-- 모달 바디 -->
-            <div class="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <span class="text-blue-600">👤</span>
+            <div class="p-6 space-y-6 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xl">👤</span>
+                            <h4 class="font-bold text-slate-800 text-sm">지원 대상</h4>
+                        </div>
+                        <p id="modal-target" class="text-sm text-slate-700 font-medium"></p>
+                        <p id="modal-restriction" class="text-xs text-slate-500 mt-1 leading-tight"></p>
                     </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-900">지원 대상 및 자격</h4>
-                        <p id="modal-target" class="text-sm text-slate-600 mt-1"></p>
-                        <p id="modal-age" class="text-xs text-slate-400 mt-1"></p>
-                    </div>
-                </div>
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-                        <span class="text-green-600">🗓️</span>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-900">신청 기간</h4>
-                        <p id="modal-period" class="text-sm text-slate-600 mt-1"></p>
+                    <div class="bg-green-50 p-4 rounded-xl border border-green-100">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xl">🗓️</span>
+                            <h4 class="font-bold text-slate-800 text-sm">신청 기간</h4>
+                        </div>
+                        <p id="modal-period" class="text-sm text-slate-700 font-medium"></p>
+                        <p id="modal-apply" class="text-xs text-slate-500 mt-1 leading-tight"></p>
                     </div>
                 </div>
-                <div class="flex gap-4">
-                    <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
-                        <span class="text-orange-600">ℹ️</span>
+
+                <div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
+                        <span class="text-orange-500">ℹ️</span> 상세 지원 내용
+                    </h4>
+                    <div id="modal-desc" class="text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-5 rounded-xl border border-slate-200"></div>
+                </div>
+
+                 <div class="flex items-center gap-6 text-sm text-slate-500 border-t pt-4">
+                    <div>
+                        <span class="font-bold text-xs text-slate-400 uppercase">연령대</span>
+                        <p id="modal-age" class="text-slate-700 font-medium">-</p>
                     </div>
                     <div>
-                        <h4 class="text-sm font-bold text-slate-900">상세 내용</h4>
-                        <p id="modal-desc" class="text-sm text-slate-600 mt-1 leading-relaxed whitespace-pre-line"></p>
+                        <span class="font-bold text-xs text-slate-400 uppercase">주관부서</span>
+                        <p id="modal-dept-detail" class="text-slate-700 font-medium">-</p>
                     </div>
-                </div>
-                <div class="flex gap-4">
-                     <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-                        <span class="text-purple-600">🏢</span>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-900">주관 기관</h4>
-                        <p id="modal-dept" class="text-sm text-slate-600 mt-1"></p>
-                    </div>
-                </div>
+                 </div>
             </div>
 
-            <!-- 모달 푸터 -->
             <div class="p-4 border-t bg-slate-50 flex gap-3">
-                <button onclick="closeModal()" class="flex-1 py-3 px-4 rounded-xl border bg-white font-medium text-slate-700 hover:bg-slate-100 transition-colors">닫기</button>
-                <a id="modal-link" href="#" target="_blank" rel="noreferrer" class="flex-1 py-3 px-4 rounded-xl bg-blue-600 text-white font-bold text-center hover:bg-blue-700 transition-colors">자세히 보기 &rarr;</a>
+                <button onclick="closeModal()" class="flex-1 py-3.5 px-4 rounded-xl border bg-white font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">닫기</button>
             </div>
         </div>
     </div>
 
     <!-- 헤더 -->
-    <header class="bg-white border-b sticky top-0 z-10 shadow-sm">
+    <header class="bg-white border-b sticky top-0 z-40 shadow-sm backdrop-blur-md bg-white/90">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-blue-600">청년 정책 통합 타임라인</h1>
-                    <p class="text-sm text-slate-500 mt-1">2025년 전국 단위 청년 지원 사업 모아보기 (실시간 데이터 반영)</p>
+                    <h1 class="text-2xl font-extrabold text-blue-600 tracking-tight flex items-center gap-2">
+                        <span class="bg-blue-100 text-blue-600 p-1 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </span>
+                        청년 정책 타임라인
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-1 ml-1">2025-2026 청년 지원 프로그램 (총 <span id="header-total-count" class="font-bold text-blue-600">51</span>건)</p>
                 </div>
-                <!-- 메인 네비게이션 (뷰 전환) -->
-                <nav class="bg-slate-100 p-1 rounded-lg flex text-sm font-medium">
-                    <button data-view="dashboard" class="nav-button flex-1 px-4 py-2 rounded-md transition-all bg-white shadow text-blue-600">요약</button>
-                    <button data-view="timeline" class="nav-button flex-1 px-4 py-2 rounded-md transition-all text-slate-500">타임라인</button>
-                    <button data-view="list" class="nav-button flex-1 px-4 py-2 rounded-md transition-all text-slate-500">목록보기</button>
-                </nav>
+                
+                <!-- 탭 네비게이션 -->
+                <div class="bg-slate-100 p-1 rounded-xl flex text-sm font-medium shadow-inner">
+                    <button onclick="switchView('timeline')" id="nav-timeline" class="nav-button px-6 py-2.5 rounded-lg transition-all bg-white shadow text-blue-600 font-bold">타임라인 뷰</button>
+                    <button onclick="switchView('list')" id="nav-list" class="nav-button px-6 py-2.5 rounded-lg transition-all text-slate-500 hover:text-slate-700">목록 뷰 (+요약)</button>
+                </div>
             </div>
 
-            <!-- 필터 (핵심 정보축) -->
-            <div class="mt-6 space-y-3">
-                <!-- 축 1: Who (내 상태) -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-bold text-slate-700 whitespace-nowrap mr-2">👤 내 상태:</span>
-                    <button data-filter-group="status" data-filter-value="전체" class="filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-blue-600 text-white border-blue-600">전체</button>
-                    <button data-filter-group="status" data-filter-value="재학생" class="filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">재학생</button>
-                    <button data-filter-group="status" data-filter-value="졸업예정" class="filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">졸업예정</button>
-                    <button data-filter-group="status" data-filter-value="취준생" class="filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">취준생(미취업)</button>
-                    <button data-filter-group="status" data-filter-value="사회초년생" class="filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">사회초년생(재직자)</button>
-                </div>
-                <!-- 축 2: What (관심 분야) -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-sm font-bold text-slate-700 whitespace-nowrap mr-2">🎯 관심 분야:</span>
-                    <button data-filter-group="category" data-filter-value="전체" class="filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-slate-800 text-white border-slate-800">전체</button>
-                    <button data-filter-group="category" data-filter-value="취업/직무" class="filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">취업/직무</button>
-                    <button data-filter-group="category" data-filter-value="교육/장학" class="filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">교육/장학</button>
-                    <button data-filter-group="category" data-filter-value="주거/금융" class="filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">주거/금융</button>
-                    <button data-filter-group="category" data-filter-value="생활/복지" class="filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50">생활/복지</button>
+            <!-- 필터 패널 -->
+            <div class="mt-4 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div class="flex flex-col gap-4">
+                    <!-- 연도 선택 -->
+                    <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
+                        <span class="text-sm font-bold text-slate-700 min-w-[60px] flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            연도
+                        </span>
+                        <div class="flex bg-slate-100 rounded-lg p-1">
+                            <button onclick="setYear(2025)" id="btn-year-2025" class="year-toggle px-4 py-1.5 rounded-md text-sm font-bold bg-white text-blue-600 shadow-sm transition-all">2025년</button>
+                            <button onclick="setYear(2026)" id="btn-year-2026" class="year-toggle px-4 py-1.5 rounded-md text-sm text-slate-500 hover:text-slate-700 transition-all">2026년</button>
+                        </div>
+                    </div>
+
+                    <!-- 내 상태 (Who) -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-700 min-w-[60px] flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            상태
+                        </span>
+                        <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                            <button onclick="setFilter('status', '전체')" class="filter-btn status-filter active px-3 py-1.5 rounded-full text-xs border bg-blue-600 text-white border-blue-600" data-val="전체">전체</button>
+                            <button onclick="setFilter('status', '재학생')" class="filter-btn status-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="재학생">재학생</button>
+                            <button onclick="setFilter('status', '졸업예정')" class="filter-btn status-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="졸업예정">졸업예정</button>
+                            <button onclick="setFilter('status', '취준생')" class="filter-btn status-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="취준생">취준생</button>
+                            <button onclick="setFilter('status', '사회초년생')" class="filter-btn status-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="사회초년생">사회초년생</button>
+                            <button onclick="setFilter('status', '창업')" class="filter-btn status-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="창업">창업가</button>
+                        </div>
+                    </div>
+
+                    <!-- 관심 분야 (What) -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-700 min-w-[60px] flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                            분야
+                        </span>
+                        <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                            <button onclick="setFilter('category', '전체')" class="filter-btn category-filter active px-3 py-1.5 rounded-full text-xs border bg-slate-800 text-white border-slate-800" data-val="전체">전체</button>
+                            <button onclick="setFilter('category', '취업/직무')" class="filter-btn category-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="취업/직무">취업/직무</button>
+                            <button onclick="setFilter('category', '창업')" class="filter-btn category-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="창업">창업</button>
+                            <button onclick="setFilter('category', '교육/장학')" class="filter-btn category-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="교육/장학">교육/장학</button>
+                            <button onclick="setFilter('category', '주거/금융')" class="filter-btn category-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="주거/금융">주거/금융</button>
+                            <button onclick="setFilter('category', '생활/복지')" class="filter-btn category-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50" data-val="생활/복지">생활/복지</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- 메인 컨텐츠 영역 -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <!-- 뷰 1: 대시보드 (요약) -->
-        <section id="view-dashboard" class="app-view">
-            <div class="mb-6 bg-blue-50/70 border border-blue-100 rounded-lg p-4">
-                <h3 class="text-sm font-bold text-blue-800">요약 대시보드</h3>
-                <p class="text-xs text-blue-600 mt-1">
-                    스프레드시트에서 불러온 <span id="stat-total-text" class="font-bold"></span>개의 정책을 분석한 결과입니다.
-                </p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- 통계 카드 -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border col-span-1 flex flex-col justify-center">
-                    <span class="text-sm font-medium text-slate-500">총 정책 수</span>
-                    <span id="stat-total" class="text-4xl font-bold text-blue-600 mt-2">0</span>
-                    <span class="text-sm text-slate-400 mt-1">개의 정책이 있습니다.</span>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border col-span-1 flex flex-col justify-center">
-                    <span class="text-sm font-medium text-slate-500">지금 신청 가능 (상시 포함)</span>
-                    <span id="stat-available" class="text-4xl font-bold text-green-600 mt-2">0</span>
-                    <span class="text-sm text-slate-400 mt-1">개의 정책이 접수 중입니다.</span>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border col-span-1 flex flex-col justify-center">
-                    <span class="text-sm font-medium text-slate-500">주목할 정책</span>
-                    <span id="stat-important" class="text-4xl font-bold text-purple-600 mt-2">0</span>
-                    <span class="text-sm text-slate-400 mt-1">개의 핵심 정책이 있습니다.</span>
-                </div>
-
-                <!-- Chart.js 차트 -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border md:col-span-3">
-                    <h3 class="text-lg font-bold text-center mb-4">분야별 정책 분포</h3>
-                    <div class="chart-container">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 뷰 2: 타임라인 (Gantt) -->
-        <section id="view-timeline" class="app-view hidden">
-            <div class="mb-6 bg-blue-50/70 border border-blue-100 rounded-lg p-4">
-                <h3 class="text-sm font-bold text-blue-800">2025년 연간 타임라인</h3>
-                <p class="text-xs text-blue-600 mt-1">
-                    정책 막대를 클릭하면 상세 내용을 볼 수 있습니다. 가로로 스크롤하여 전체 기간을 확인하세요.
-                </p>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <!-- 월 헤더 -->
-                <div class="flex border-b bg-slate-50 text-xs font-bold text-slate-500 sticky top-[218px] md:top-[194px] z-[5]">
-                    {[...Array(12)].map((_, i) => `<div class="flex-1 py-2 text-center border-r last:border-r-0 min-w-[80px]">${i+1}월</div>`).join('')}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[60vh]">
+        
+        <!-- [VIEW 1] 타임라인 (메인 간트 차트) -->
+        <section id="view-timeline" class="animate-[fadeIn_0.3s_ease-out]">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span id="timeline-year-display">2025</span>년 일정표
+                    </h2>
+                    <span class="text-xs text-slate-500 bg-white px-2 py-1 rounded border">좌우로 스크롤하여 확인하세요 👉</span>
                 </div>
                 
-                <!-- 타임라인 바디 -->
-                <div id="timeline-body" class="relative p-4 overflow-x-auto min-h-[600px]">
-                    <!-- 배경 그리드 -->
-                    <div class="absolute inset-0 flex pointer-events-none top-0">
-                        {[...Array(12)].map((_, i) => `<div class="flex-1 border-r border-dashed border-slate-100 last:border-r-0 min-w-[80px] h-full"></div>`).join('')}
-                    </div>
-                    
-                    <!-- 오늘 날짜선 -->
-                    <div id="today-line" class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-0 pointer-events-none">
-                        <div class="absolute -top-1 -translate-x-1/2 bg-red-500 text-white text-[10px] px-1 rounded">Today</div>
-                    </div>
-                    
-                    <!-- 정책 막대 렌더링 영역 -->
-                    <div id="timeline-bars" class="space-y-3 relative z-0 mt-2">
-                        <!-- JS로 렌더링 -->
+                <div class="overflow-x-auto custom-scrollbar relative">
+                    <div class="min-w-[1200px] p-6 relative min-h-[600px]">
+                        <!-- 월 헤더 -->
+                        <div class="flex mb-4 sticky top-0 bg-white z-20 border-b">
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">1월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">2월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">3월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">4월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">5월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">6월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">7월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">8월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">9월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">10월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400 border-r">11월</div>
+                            <div class="flex-1 text-center py-2 text-xs font-bold text-slate-400">12월</div>
+                        </div>
+
+                        <!-- 배경 그리드 -->
+                        <div class="absolute inset-0 top-[50px] flex pointer-events-none z-0">
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 border-r border-dashed border-slate-100 h-full"></div>
+                            <div class="flex-1 h-full"></div>
+                        </div>
+
+                        <!-- 오늘 날짜 라인 -->
+                        <div id="today-line" class="absolute top-[50px] bottom-6 w-0.5 bg-red-500 z-10 hidden">
+                            <div class="absolute -top-1 -translate-x-1/2 bg-red-500 text-white text-[10px] px-1 rounded font-bold">Today</div>
+                        </div>
+
+                        <!-- 바 컨테이너 -->
+                        <div id="timeline-container" class="space-y-3 relative z-10 pb-10">
+                            <!-- JS로 바 생성됨 -->
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 뷰 3: 목록보기 (카드) -->
-        <section id="view-list" class="app-view hidden">
-            <div class="mb-6 bg-blue-50/70 border border-blue-100 rounded-lg p-4">
-                <h3 class="text-sm font-bold text-blue-800">정책 목록 보기</h3>
-                <p class="text-xs text-blue-600 mt-1">
-                    필터링된 전체 정책 목록입니다. 카드를 클릭하면 상세 내용을 볼 수 있습니다.
-                </p>
-            </div>
+        <!-- [VIEW 2] 목록 + 사이드바 요약 (통합 뷰) -->
+        <section id="view-list" class="hidden animate-[fadeIn_0.3s_ease-out]">
+            <div class="flex flex-col lg:flex-row gap-8 relative">
+                
+                <!-- [SIDEBAR] 요약 대시보드 (여기로 통합) -->
+                <aside class="w-full lg:w-1/3 xl:w-1/4 shrink-0 order-1 lg:order-1">
+                    <div class="sidebar-sticky space-y-6">
+                        
+                        <!-- 통계 카드 -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                            <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                📊 정책 현황
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                                    <span class="text-xs font-bold text-slate-500">총 정책</span>
+                                    <span class="text-lg font-black text-slate-800" id="dash-total">0</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                    <span class="text-xs font-bold text-green-600">접수 중</span>
+                                    <span class="text-lg font-black text-green-600" id="dash-active">0</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                                    <span class="text-xs font-bold text-red-500">마감 임박</span>
+                                    <span class="text-lg font-black text-red-500" id="dash-urgent">0</span>
+                                </div>
+                            </div>
+                        </div>
 
-            <div id="policy-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- JS로 렌더링 -->
+                        <!-- 차트 -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                            <h3 class="text-sm font-bold text-slate-800 mb-4">분야별 비율</h3>
+                            <div class="relative w-full h-48">
+                                <canvas id="sidebarChart"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                </aside>
+
+                <!-- [MAIN] 정책 카드 리스트 -->
+                <div class="flex-1 order-2 lg:order-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-lg">정책 목록 <span class="text-sm font-normal text-slate-500 ml-1" id="list-count">(0건)</span></h3>
+                        <div class="text-xs text-slate-400 bg-white px-2 py-1 rounded border">
+                            * 카드를 클릭하면 상세 내용을 볼 수 있습니다.
+                        </div>
+                    </div>
+                    
+                    <div id="list-container" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <!-- JS로 카드 생성됨 -->
+                    </div>
+                </div>
+
             </div>
         </section>
 
     </main>
 
     <script>
-        // --- 1. 실제 데이터 (Google Sheet 내용 반영) ---
-        const policies = [
-            // 교육/장학
-            { id: 101, title: "인공지능대학원 지원", category: "교육/장학", startDate: "2025-01-01", endDate: "2025-12-31", target: ["졸업생", "대학원생"], desc: "인공지능 산업융합 집적단지에 필요한 고급인재 양성. AI반도체과, 인공지능 교육.", dept: "AI반도체과", important: false },
-            { id: 102, title: "정보보호 특성화 대학 지원", category: "교육/장학", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생"], desc: "디지털전환 대비, 우리지역 AI기반 정보보호 인재양성.", dept: "AI반도체과", important: false },
-            { id: 121, title: "직업심리검사", category: "교육/장학", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "취준생", "전체"], desc: "개인의 능력과 흥미, 성격 등을 측정하여 적합한 직업 탐색 지원.", dept: "고용노동부", important: false },
-
-            // 취업/직무 (일자리)
-            { id: 201, title: "방위산업 전문인력 양성 지원사업", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "졸업생", "석박사"], desc: "방위산업 현장의 수요에 기반한 전문인력 양성 및 일자리 창출 지원.", dept: "방위사업청", important: false },
-            { id: 202, title: "청년일자리 도약장려금", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "미취업"], desc: "중소기업에서 취업애로청년을 정규직으로 채용하고 6개월 이상 고용유지시 기업지원금 지급.", dept: "고용노동부", important: true },
-            { id: 203, title: "국민내일배움카드", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "취준생", "재직자", "전체"], desc: "1인당 300~500만원 훈련비 지원. 졸업예정자, 구직자, 재직자 등 누구나 신청 가능.", dept: "고용노동부", important: true },
-            { id: 204, title: "국민취업지원제도", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "미취업"], desc: "취업지원서비스와 소득지원(구직촉진수당)을 결합하여 제공하는 한국형 실업부조.", dept: "고용노동부", important: true },
-            { id: 205, title: "청년도전지원사업", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "미취업", "구직단념"], desc: "단기(5주), 중기(15주), 장기(25주) 프로그램 참여 시 참여수당 및 인센티브 지급 (최대 300만원 이상).", dept: "고용노동부", important: true },
-            { id: 206, title: "청년 국가기술자격시험 응시료 지원", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "취준생", "사회초년생", "전체"], desc: "34세 이하 청년 대상 국가기술자격 시험 응시료 50% 선 지원 (연 3회 한도).", dept: "고용노동부", important: true },
-            { id: 207, title: "해외일경험 지원사업(WELL)", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "졸업생", "취준생"], desc: "직무소양교육 후 해외 현지 일경험(2~4개월) 기회 제공. 체재비 및 국가별 지원금 지급.", dept: "고용노동부", important: false },
-            { id: 208, title: "미래내일 일경험 사업", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "취준생"], desc: "기업탐방형, 프로젝트형, 인턴형, ESG지원형 등 다양한 일경험 프로그램 제공 및 수당 지급.", dept: "고용노동부", important: true },
-            { id: 209, title: "TIPS(팁스) 프로그램", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["예비창업자", "창업가"], desc: "민간이 발굴한 유망 기술창업기업 지원 (R&D, 창업사업화 자금 등).", dept: "중소벤처기업부", important: false },
-            { id: 210, title: "청년창업기업 보증", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["예비창업자", "초기창업자"], desc: "청년창업기업에 대한 보증료 감면, 보증비율 상향 등 우대 혜택.", dept: "중소벤처기업부", important: false },
-            { id: 211, title: "K-Move 스쿨", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "졸업생"], desc: "해외취업을 희망하는 청년에게 어학 및 직무 교육 제공 (연수비 국비 지원).", dept: "고용노동부", important: false },
-            { id: 212, title: "대학일자리플러스센터", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["재학생", "졸업생"], desc: "진로/취업 상담, 프로그램 참여, 일자리 매칭 등 원스톱 고용서비스 제공.", dept: "고용노동부", important: false },
-            { id: 213, title: "K-디지털 트레이닝", category: "취업/직무", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "졸업예정", "미취업"], desc: "첨단산업/디지털 핵심 실무인재 양성훈련. 훈련비 전액 지원 및 훈련수당 지급.", dept: "고용노동부", important: true },
-
-            // 주거/금융
-            { id: 301, title: "청년주택드림청약통장", category: "주거/금융", startDate: "2025-01-01", endDate: "2025-12-31", target: ["사회초년생", "재학생", "취준생", "무주택"], desc: "최대 4.5% 이자율, 청약 당첨 시 분양가 80%까지 최저 2.2% 저금리 대출 연계.", dept: "국토교통부", important: true },
-            { id: 302, title: "청년 주택드림 디딤돌 대출", category: "주거/금융", startDate: "2025-01-01", endDate: "2025-12-31", target: ["사회초년생", "무주택"], desc: "청년 전용 주택담보대출. 최저 2.4% 금리, 최장 40년 만기.", dept: "국토교통부", important: true },
-            { id: 303, title: "생활안정자금 융자사업", category: "주거/금융", startDate: "2025-01-06", endDate: "2025-12-31", target: ["사회초년생", "재직자"], desc: "의료비, 혼례비, 부모요양비 등 저리 융자 (연 1.5%).", dept: "고용노동부", important: false },
-            { id: 304, title: "청년전용창업자금", category: "주거/금융", startDate: "2025-01-01", endDate: "2025-12-31", target: ["예비창업자", "초기창업자"], desc: "신용/담보력이 부족한 청년 창업가 대상 저리 융자 지원.", dept: "중소벤처기업부", important: false },
-            { id: 305, title: "청년 채무조정 제공", category: "주거/금융", startDate: "2025-01-01", endDate: "2025-12-31", target: ["취준생", "대학생", "사회초년생"], desc: "연체 기간에 따른 이자 감면, 상환 유예 등 채무조정 지원.", dept: "금융위원회", important: false },
-            
-            // 생활/복지
-            { id: 401, title: "청년 1인가구 사회적관계망 형성지원", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["전체", "1인가구"], desc: "가족센터 중심으로 청년 1인가구의 고독/고립 방지 프로그램 지원.", dept: "가족정책과", important: false },
-            { id: 402, title: "청년성장프로젝트(청년카페)", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["미취업", "취준생"], desc: "청년카페 공간 무료 이용, 심리상담, 경력설계 프로그램 등 지원.", dept: "고용노동부", important: false },
-            { id: 403, title: "청년 자산형성 지원(청년도약계좌)", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["사회초년생", "알바생", "취준생"], desc: "5년 만기 시 최대 5,000만원 목돈 마련. 정부기여금 매칭 및 비과세 혜택.", dept: "금융위원회", important: true },
-            { id: 404, title: "2025년 전국민마음투자지원사업", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["전체"], desc: "전문 심리상담 서비스 바우처 총 8회 제공.", dept: "보건복지부", important: false },
-            { id: 405, title: "유엔자원봉사단(UNV) 파견", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["대졸", "졸업생", "전문직"], desc: "국제기구 현장사무소 봉사단 파견 지원 (생활비 지원).", dept: "외교부", important: false },
-            { id: 406, title: "청년세대 맞춤형 고충해소", category: "생활/복지", startDate: "2025-01-01", endDate: "2025-12-31", target: ["전체"], desc: "찾아가는 고충 해결(달리는 국민신문고) 및 청년 고충 유발요인 해소.", dept: "국민권익위원회", important: false }
+        // --- 1. 전체 데이터 (51개 완전체) ---
+        const rawData = [
+            { "title": "인공지능대학원 지원", "dept": "AI반도체과", "category": "교육/장학", "age": "무제한", "period": "2019-10-01~2028-12-31", "apply": "상시", "target": "대졸", "desc": "광주 인공지능 산업융합 집적단지에 필요한 고급인재 양성", "restriction": "AI 대학원생 및 학부생" },
+            { "title": "정보보호 특성화 대학 지원", "dept": "AI반도체과", "category": "교육/장학", "age": "20-30", "period": "2024~2028", "apply": "상시", "target": "대학재학", "desc": "디지털전환 대비, 우리지역 AI기반 정보보호 인재양성", "restriction": "없음" },
+            { "title": "청년 1인가구 사회적관계망 형성지원", "dept": "가족정책과", "category": "생활/복지", "age": "무제한", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "청년 1인가구 고독, 고립 등 방지를 위한 사회적 관계망 지원", "restriction": "없음" },
+            { "title": "학교 밖 청소년 온라인 지원 강화", "dept": "여성가족부", "category": "생활/복지", "age": "9~24", "period": "상시", "apply": "상시", "target": "기타", "desc": "학교 밖 청소년 대상 온라인 콘텐츠 및 프로그램 개발 및 보급", "restriction": "학교밖청소년" },
+            { "title": "방위산업 전문인력 양성 지원사업", "dept": "방위사업청", "category": "취업/직무", "age": "만 19세~만 34세", "period": "기관운영 정책에 따름", "apply": "상시", "target": "고교재학, 대학졸업, 석박사", "desc": "방위산업 현장 수요 기반 전문인력 양성 및 일자리 창출", "restriction": "없음" },
+            { "title": "TIPS(팁스) 프로그램", "dept": "중소벤처기업부", "category": "창업", "age": "무제한", "period": "상시", "apply": "상시", "target": "예비창업자", "desc": "민간이 발굴한 유망 기술창업기업 지원", "restriction": "예비 창업자 한정" },
+            { "title": "제조창업활성화(메이커스페이스 지원)", "dept": "중소벤처기업부", "category": "창업", "age": "무제한", "period": "상시", "apply": "상시", "target": "예비창업자", "desc": "메이커 저변확대 및 제조창업 촉진을 위한 사업비 지원", "restriction": "예비 창업자 한정" },
+            { "title": "청년일자리 도약장려금", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "2025-01-01~2025-12-31", "target": "취준생", "desc": "취업애로청년 정규직 채용 시 기업지원금 지급", "restriction": "청년일자리 도약장려금 대상자" },
+            { "title": "청년주택드림청약통장", "dept": "국토교통부", "category": "주거/금융", "age": "만 19세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "최대 4.5% 이자율, 청약 당첨 시 분양가 80% 대출 연계", "restriction": "연소득 5천만원 이하 무주택자" },
+            { "title": "국민내일배움카드", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 75세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "1인당 300~500만원 훈련비 지원", "restriction": "현직 공무원, 사립학교 교직원 등 제외" },
+            { "title": "1인 미디어 창작자 및 스타트업 지원", "dept": "방송진흥정책관", "category": "창업", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "1인 미디어 창작자 스튜디오 운영 및 인력 양성", "restriction": "지원 사업별 공고 참조" },
+            { "title": "청년성장프로젝트(청년카페)", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "청년카페 공간 이용 및 맞춤형 취업 프로그램 제공", "restriction": "진학 예정자 제외" },
+            { "title": "국민취업지원제도", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 69세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "취업지원서비스와 소득지원(구직촉진수당) 제공", "restriction": "재학생 등 일부 제외" },
+            { "title": "청년도전지원사업", "dept": "고용노동부", "category": "취업/직무", "age": "무제한", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "단기/중장기 프로그램 참여수당 최대 300만원 지원", "restriction": "구직급여 수급자 등 제외" },
+            { "title": "청년 국가기술자격시험 응시료 지원", "dept": "고용노동부", "category": "취업/직무", "age": "만 0세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "국가기술자격 시험 응시료 50% 지원 (연 3회)", "restriction": "34세 이하" },
+            { "title": "해외일경험 지원사업(WELL)", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "해외 현지 일경험 및 체재비 지원", "restriction": "정부사업 중복참여 제외" },
+            { "title": "미래내일 일경험 사업", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "기업탐방, 프로젝트형, 인턴형 일경험 제공", "restriction": "동일 연도 최대 2회" },
+            { "title": "청년 주택드림 디딤돌 대출", "dept": "국토교통부", "category": "주거/금융", "age": "만 0세~만 39세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "청년 전용 최저 2.4% 주택담보대출", "restriction": "연소득 5천만원 이하 무주택자" },
+            { "title": "유연근무제 장려금(사업주 지원)", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "재택, 원격, 선택근무제 활용 사업주 지원금", "restriction": "체불사업주 등 제외" },
+            { "title": "청년전용창업자금", "dept": "중소벤처기업부", "category": "창업", "age": "만 0세~만 39세", "period": "상시", "apply": "상시", "target": "예비창업자", "desc": "청년 창업가 대상 저리 융자 지원", "restriction": "예비창업자 대상" },
+            { "title": "직업심리검사", "dept": "고용노동부", "category": "교육/장학", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "개인 능력/흥미 적합 직업 탐색 지원", "restriction": "없음" },
+            { "title": "청년 자산형성 지원(청년도약계좌)", "dept": "금융위원회", "category": "생활/복지", "age": "만 19세~만 34세", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "5년 만기 시 최대 5,000만원 목돈 마련 (정부기여금)", "restriction": "소득요건 충족자" },
+            { "title": "2025년 전국민마음투자지원사업", "dept": "보건복지부", "category": "생활/복지", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "2025-01-01~2025-12-31", "target": "제한없음", "desc": "전문 심리상담 서비스 바우처 총 8회 제공", "restriction": "정신과 진료 필요시 제한" },
+            { "title": "해외취업정착지원금", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "취업 후 최대 500만원 정착지원금", "restriction": "중복수혜 불가" },
+            { "title": "구직급여", "dept": "고용노동부", "category": "생활/복지", "age": "제한없음", "period": "연중", "apply": "상시", "target": "제한없음", "desc": "퇴직 전 평균임금의 60% 지급", "restriction": "고용보험 가입자" },
+            { "title": "육아기 근로시간 단축 급여", "dept": "고용노동부", "category": "생활/복지", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "단축 근로시간에 비례하여 급여 지원", "restriction": "고용보험 피보험자" },
+            { "title": "고용유지지원금", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "휴업/휴직 수당의 일부를 사업주에게 지원", "restriction": "고용보험 가입자" },
+            { "title": "생활안정자금 융자사업", "dept": "고용노동부", "category": "주거/금융", "age": "제한없음", "period": "2025-01-06~2025-12-31", "apply": "2025-01-06~2025-12-31", "target": "제한없음", "desc": "의료비, 혼례비 등 연 1.5% 저리 융자", "restriction": "신용불량자 제외" },
+            { "title": "조기재취업수당", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "구직급여 수급 중 조기 재취업 시 잔여 급여의 1/2 지급", "restriction": "자영업자 등 제외" },
+            { "title": "청년취업ON", "dept": "고용노동부", "category": "취업/직무", "age": "만 18세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "직무역량 강화 컨설팅 및 취업프로그램", "restriction": "불성실 참여자" },
+            { "title": "K-Move 스쿨", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "해외취업 연수비용 1인당 최대 1,300만원 지원", "restriction": "최근 1년내 참여자 제외" },
+            { "title": "대학일자리플러스센터", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "연중", "apply": "상시", "target": "제한없음", "desc": "진로/취업 상담 및 프로그램 원스톱 제공", "restriction": "없음" },
+            { "title": "청년일자리 강소기업 선정", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "2025-01-01~2027-12-31", "apply": "상시", "target": "제한없음", "desc": "청년 친화적 우수 중소기업 정보 제공", "restriction": "체불기업 제외" },
+            { "title": "(국민연금) 실업크레딧 지원", "dept": "고용노동부", "category": "생활/복지", "age": "만 18세~만 60세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "실직자 국민연금 보험료의 75% 지원", "restriction": "구직급여 수급자" },
+            { "title": "꿈드림 공작소", "dept": "고용노동부", "category": "창업", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "시제품 제작 및 영상 촬영 장비 무료 지원", "restriction": "없음" },
+            { "title": "취업지원대상자 취업능력개발비용 지원", "dept": "국가보훈부", "category": "교육/장학", "age": "만 18세~만 74세", "period": "예산소진시까지", "apply": "상시", "target": "제한없음", "desc": "취업수강료 실부담액의 70% 지원", "restriction": "보훈대상자" },
+            { "title": "청년층직업지도프로그램(CAP@)", "dept": "고용노동부", "category": "취업/직무", "age": "만 18세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "취업준비생 구직기술 강화 프로그램", "restriction": "없음" },
+            { "title": "대학 재학생 맞춤형 고용서비스", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "상시", "apply": "상시", "target": "재학생", "desc": "학년별 맞춤형 진로/취업 서비스 제공", "restriction": "대학 재학생" },
+            { "title": "청년창업기업 보증", "dept": "중소벤처기업부", "category": "창업", "age": "만 17세~만 39세", "period": "상시", "apply": "상시", "target": "예비창업자", "desc": "청년창업기업 보증료 감면 및 우대", "restriction": "없음" },
+            { "title": "유엔자원봉사단(UNV) 파견", "dept": "외교부", "category": "생활/복지", "age": "만 22세~만 29세", "period": "상시", "apply": "상시", "target": "대졸", "desc": "국제기구 현장 사무소 봉사단 파견 지원", "restriction": "기존 파견자 제외" },
+            { "title": "지식재산 기반 창업촉진(IP 디딤돌)", "dept": "특허청", "category": "창업", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "예비창업자", "desc": "아이디어 권리화 및 초기창업 사업화 지원", "restriction": "없음" },
+            { "title": "직업훈련 생계비대부사업", "dept": "고용노동부", "category": "주거/금융", "age": "제한없음", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "제한없음", "desc": "직업훈련 참여 중 월 최대 200만원 대부 (연 1%)", "restriction": "소득요건 충족자" },
+            { "title": "직장적응 지원", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 34세", "period": "상시", "apply": "상시", "target": "사회초년생", "desc": "신입사원 온보딩 및 조직문화 적응 지원", "restriction": "채용 1년 이내" },
+            { "title": "창업보육센터 지원", "dept": "경제산업국", "category": "창업", "age": "만 18세~만 39세", "period": "상시", "apply": "상시", "target": "예비창업자", "desc": "창업 교육 및 사업추진 경비 지원", "restriction": "없음" },
+            { "title": "청년·대학생 햇살론(햇살론유스)", "dept": "서민금융진흥원", "category": "주거/금융", "age": "만 19세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "저신용 청년/대학생 대상 생활자금 대출", "restriction": "없음" },
+            { "title": "K-디지털 트레이닝", "dept": "고용노동부", "category": "취업/직무", "age": "만 15세~만 75세", "period": "2025-01-01~2025-12-31", "apply": "상시", "target": "기타", "desc": "디지털 핵심 실무인재 양성 훈련비 전액 지원", "restriction": "공무원 등 제외" },
+            { "title": "청년세대 맞춤형 고충해소", "dept": "국민권익위원회", "category": "생활/복지", "age": "제한없음", "period": "연중상시", "apply": "상시", "target": "제한없음", "desc": "찾아가는 고충 해결 및 청년 고충 요인 해소", "restriction": "없음" },
+            { "title": "예술인 고용보험", "dept": "고용노동부", "category": "생활/복지", "age": "제한없음", "period": "연중상시", "apply": "상시", "target": "제한없음", "desc": "실업급여 및 출산전후급여 지급", "restriction": "일정 소득 미만 제외" },
+            { "title": "구직자ㆍ기업 도약보장 패키지", "dept": "고용노동부", "category": "취업/직무", "age": "제한없음", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "1:1 심층 상담 통한 경력개발 및 맞춤형 서비스", "restriction": "없음" },
+            { "title": "청년 채무조정 제공", "dept": "금융소비자국", "category": "주거/금융", "age": "만 0세~만 34세", "period": "상시", "apply": "상시", "target": "제한없음", "desc": "이자 감면, 상환 유예 등 채무조정 지원", "restriction": "연체자" }
         ];
 
-        // --- 2. 전역 상태 및 DOM 참조 ---
+        // --- 2. 데이터 가공 (매핑) ---
+        const policies = rawData.map((item, idx) => {
+            let targets = [];
+            const t = (item.target + " " + item.restriction).toLowerCase();
+            
+            // 키워드 기반 자동 태깅
+            if (t.includes("대학") || t.includes("재학")) targets.push("재학생");
+            if (t.includes("졸업") || t.includes("예정")) targets.push("졸업예정");
+            if (t.includes("구직") || t.includes("미취업") || t.includes("취업애로") || t.includes("취준")) targets.push("취준생");
+            if (t.includes("재직") || t.includes("직장") || t.includes("사회초년") || t.includes("근로")) targets.push("사회초년생");
+            if (t.includes("창업")) targets.push("창업");
+            if (targets.length === 0) targets.push("전체");
+
+            // 날짜 파싱
+            let sDate = "2025-01-01";
+            let eDate = "2025-12-31";
+            let isAlways = false;
+
+            if (item.apply.includes("상시") || item.period.includes("상시") || item.period.includes("연중")) {
+                isAlways = true;
+            } else if (item.apply.match(/\d{4}-\d{2}-\d{2}/)) {
+                const dates = item.apply.match(/(\d{4}-\d{2}-\d{2})/g);
+                if (dates && dates.length >= 1) sDate = dates[0];
+                if (dates && dates.length >= 2) eDate = dates[1];
+            } else if (item.period.match(/\d{4}-\d{2}-\d{2}/)) {
+                const dates = item.period.match(/(\d{4}-\d{2}-\d{2})/g);
+                if (dates && dates.length >= 1) sDate = dates[0];
+                if (dates && dates.length >= 2) eDate = dates[1];
+            }
+
+            return {
+                id: idx,
+                title: item.title,
+                category: item.category,
+                dept: item.dept,
+                startDate: sDate,
+                endDate: eDate,
+                isAlways: isAlways,
+                target: targets,
+                desc: item.desc,
+                details: {
+                    age: item.age,
+                    periodRaw: item.period,
+                    applyRaw: item.apply,
+                    restriction: item.restriction,
+                    targetRaw: item.target,
+                    edu: item.학력 || '제한없음' // 학력 컬럼이 있다면
+                }
+            };
+        });
+
+        // --- 3. 상태 관리 ---
         let state = {
-            currentView: 'dashboard',
-            filters: {
-                status: '전체',
-                category: '전체'
-            }
-        };
-        
-        let categoryChart = null;
-        // 데모를 위해 오늘 날짜를 2025년 3월 10일로 가정 (사용자가 볼 때 활성화된 느낌을 주기 위함)
-        const demoToday = new Date("2025-03-10"); 
-        
-        const views = {
-            dashboard: document.getElementById('view-dashboard'),
-            timeline: document.getElementById('view-timeline'),
-            list: document.getElementById('view-list')
-        };
-        
-        const navButtons = document.querySelectorAll('.nav-button');
-        const filterButtons = document.querySelectorAll('.filter-button');
-        const timelineBarsContainer = document.getElementById('timeline-bars');
-        const policyListContainer = document.getElementById('policy-list');
-        const todayLine = document.getElementById('today-line');
-        
-        // 모달 DOM
-        const modal = document.getElementById('modal');
-        const modalContent = modal.querySelector('.modal-content');
-        
-        // --- 3. 헬퍼 함수 ---
-
-        // 카테고리별 색상 (Tailwind 클래스)
-        const getCategoryColor = (category) => {
-            const colors = {
-                "취업/직무": "bg-blue-100 text-blue-700 border-blue-200",
-                "교육/장학": "bg-green-100 text-green-700 border-green-200",
-                "주거/금융": "bg-orange-100 text-orange-700 border-orange-200",
-                "생활/복지": "bg-purple-100 text-purple-700 border-purple-200"
-            };
-            return colors[category] || "bg-slate-100 text-slate-700 border-slate-200";
-        };
-        
-        // D-day 및 상태 계산
-        const getStatusInfo = (startDate, endDate) => {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const diffTime = end - demoToday;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (demoToday < start) {
-                const startDiff = Math.ceil((start - demoToday) / (1000 * 60 * 60 * 24));
-                return { text: `D-${startDiff} 오픈예정`, color: "bg-gray-200 text-gray-600" };
-            }
-            if (demoToday > end) return { text: "마감", color: "bg-red-100 text-red-500" };
-            // 상시모집은 특별 취급
-            if (startDate === "2025-01-01" && endDate === "2025-12-31") return { text: "상시모집", color: "bg-blue-500 text-white" };
-            
-            if (diffDays <= 15) return { text: `마감 D-${diffDays}`, color: "bg-red-500 text-white animate-pulse" };
-            return { text: "접수중", color: "bg-green-500 text-white" };
+            view: 'timeline', // 초기 뷰 (타임라인)
+            year: 2025,
+            filters: { status: '전체', category: '전체' }
         };
 
-        // 타임라인 위치 계산 (2025년 기준)
-        const calculatePosition = (startStr, endStr) => {
-            const yearStart = new Date("2025-01-01").getTime();
-            const yearEnd = new Date("2025-12-31").getTime();
-            const totalDuration = yearEnd - yearStart;
-
-            const sDate = new Date(startStr).getTime();
-            const eDate = new Date(endStr).getTime();
-
-            const safeStart = Math.max(sDate, yearStart);
-            const safeEnd = Math.min(eDate, yearEnd);
-
-            const left = ((safeStart - yearStart) / totalDuration) * 100;
-            let width = ((safeEnd - safeStart) / totalDuration) * 100;
-            
-            if (width < 0) width = 0;
-            if (left === 0 && width > 100) width = 100; // 꽉 찬 바
-            
-            return { left: `${left}%`, width: `${width}%` };
-        };
+        const chartCtx = document.getElementById('sidebarChart').getContext('2d');
+        let chartInstance = null;
         
-        const setTodayLinePosition = () => {
-            const pos = calculatePosition(demoToday.toISOString(), demoToday.toISOString());
-            todayLine.style.left = pos.left;
-        };
+        // --- 4. 렌더링 로직 ---
 
-        // --- 4. 데이터 필터링 ---
-        const getFilteredData = () => {
-            return policies.filter(item => {
-                // 내 상태 필터: '전체'는 모든 것을 보여주되, 사용자가 '재학생'을 선택하면 타겟에 '재학생' 또는 '전체'가 포함된 것 표시
-                const matchStatus = state.filters.status === '전체' || 
-                                    item.target.includes(state.filters.status) || 
-                                    item.target.includes('전체');
-                                    
-                const matchCategory = state.filters.category === '전체' || item.category === state.filters.category;
-                return matchStatus && matchCategory;
-            });
-        };
-
-        // --- 5. 렌더링 함수 ---
-
-        function renderApp() {
-            const data = getFilteredData();
-            
-            Object.values(views).forEach(view => view.classList.add('hidden'));
-            views[state.currentView].classList.remove('hidden');
-
-            updateActiveButtons();
-            
-            renderDashboard(data);
-            renderTimeline(data);
-            renderList(data);
+        function init() {
+            render();
+            updateTodayLine();
         }
 
-        function updateActiveButtons() {
-            navButtons.forEach(btn => {
-                if (btn.dataset.view === state.currentView) {
-                    btn.classList.add('bg-white', 'shadow', 'text-blue-600');
-                    btn.classList.remove('text-slate-500');
-                } else {
-                    btn.classList.remove('bg-white', 'shadow', 'text-blue-600');
-                    btn.classList.add('text-slate-500');
-                }
+        function render() {
+            // 필터링
+            const filtered = policies.filter(p => {
+                const pStartYear = parseInt(p.startDate.substring(0,4));
+                const pEndYear = parseInt(p.endDate.substring(0,4));
+                const yearMatch = p.isAlways || (pStartYear <= state.year && pEndYear >= state.year);
+
+                const statusMatch = state.filters.status === '전체' || p.target.includes(state.filters.status) || p.target.includes('전체');
+                const catMatch = state.filters.category === '전체' || p.category === state.filters.category;
+
+                return yearMatch && statusMatch && catMatch;
             });
-            
-            // 필터 버튼 스타일링은 복잡하여 data attribute 기반으로 단순화
-            document.querySelectorAll('.filter-button').forEach(btn => {
-                const group = btn.dataset.filterGroup;
-                const value = btn.dataset.filterValue;
-                const isActive = state.filters[group] === value;
-                
-                if (isActive) {
-                    if(group === 'status') btn.className = "filter-button status-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-blue-600 text-white border-blue-600";
-                    else btn.className = "filter-button category-filter px-3 py-1.5 rounded-full text-sm border transition-colors bg-slate-800 text-white border-slate-800";
-                } else {
-                    btn.className = "filter-button px-3 py-1.5 rounded-full text-sm border transition-colors bg-white text-slate-600 border-slate-300 hover:bg-slate-50";
-                }
+
+            // 뷰 업데이트
+            document.getElementById('view-timeline').classList.add('hidden');
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById(`view-${state.view}`).classList.remove('hidden');
+
+            // 버튼 스타일
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow', 'text-blue-600', 'font-bold');
+                btn.classList.add('text-slate-500');
             });
+            document.getElementById(`nav-${state.view}`).classList.add('bg-white', 'shadow', 'text-blue-600', 'font-bold');
+            document.getElementById(`nav-${state.view}`).classList.remove('text-slate-500');
+
+            document.getElementById('btn-year-2025').className = state.year === 2025 ? "year-toggle px-4 py-1.5 rounded-md text-sm font-bold bg-white text-blue-600 shadow-sm transition-all" : "year-toggle px-4 py-1.5 rounded-md text-sm text-slate-500 hover:text-slate-700 transition-all";
+            document.getElementById('btn-year-2026').className = state.year === 2026 ? "year-toggle px-4 py-1.5 rounded-md text-sm font-bold bg-white text-blue-600 shadow-sm transition-all" : "year-toggle px-4 py-1.5 rounded-md text-sm text-slate-500 hover:text-slate-700 transition-all";
+            document.getElementById('timeline-year-display').innerText = state.year;
+
+            // 헤더 카운트
+            document.getElementById('header-total-count').innerText = policies.length;
+
+            // 렌더링
+            if (state.view === 'timeline') renderTimeline(filtered);
+            if (state.view === 'list') {
+                renderList(filtered);
+                renderSidebar(filtered); // 목록 뷰일 때 사이드바 렌더링
+            }
+
+            updateTodayLine();
         }
 
-        function renderDashboard(data) {
-            document.getElementById('stat-total-text').textContent = policies.length; // 전체 데이터 수
+        // [사이드바] 요약 대시보드 렌더링
+        function renderSidebar(data) {
+            const total = data.length;
+            const active = data.filter(p => {
+                const now = new Date();
+                const end = new Date(p.endDate);
+                return p.isAlways || end >= now;
+            }).length;
+            const urgent = data.filter(p => {
+                const now = new Date();
+                const end = new Date(p.endDate);
+                const diff = (end - now) / (1000*60*60*24);
+                return !p.isAlways && diff > 0 && diff <= 14;
+            }).length;
 
-            let availableCount = 0;
-            let importantCount = 0;
-            const categoryCounts = {};
-            
-            data.forEach(p => {
-                const status = getStatusInfo(p.startDate, p.endDate);
-                if (status.text.includes('접수중') || status.text.includes('상시')) availableCount++;
-                if (p.important) importantCount++;
-                
-                const cat = p.category;
-                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-            });
-            
-            document.getElementById('stat-total').textContent = data.length;
-            document.getElementById('stat-available').textContent = availableCount;
-            document.getElementById('stat-important').textContent = importantCount;
+            document.getElementById('dash-total').innerText = total;
+            document.getElementById('dash-active').innerText = active;
+            document.getElementById('dash-urgent').innerText = urgent;
 
-            const ctx = document.getElementById('categoryChart').getContext('2d');
-            const chartData = {
-                labels: Object.keys(categoryCounts),
-                datasets: [{
-                    data: Object.values(categoryCounts),
-                    backgroundColor: [
-                        'rgba(59, 130, 246, 0.7)', 
-                        'rgba(249, 115, 22, 0.7)', 
-                        'rgba(22, 163, 74, 0.7)', 
-                        'rgba(168, 85, 247, 0.7)', 
-                        'rgba(100, 116, 139, 0.7)' 
-                    ],
-                    borderColor: '#fff',
-                    borderWidth: 2
-                }]
-            };
-
-            if (categoryChart) {
-                categoryChart.destroy();
-            }
+            // 차트
+            const counts = {};
+            data.forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1; });
             
-            categoryChart = new Chart(ctx, {
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(chartCtx, {
                 type: 'doughnut',
-                data: chartData,
+                data: {
+                    labels: Object.keys(counts),
+                    datasets: [{
+                        data: Object.values(counts),
+                        backgroundColor: [
+                            '#3b82f6', // Blue
+                            '#22c55e', // Green
+                            '#f97316', // Orange
+                            '#a855f7', // Purple
+                            '#64748b', // Slate
+                            '#eab308'  // Yellow
+                        ],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed !== null) label += context.parsed + '건';
-                                    return label;
-                                }
-                            }
-                        }
-                    }
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                    },
+                    cutout: '60%'
                 }
             });
         }
 
+        // [메인] 타임라인 렌더링
         function renderTimeline(data) {
-            timelineBarsContainer.innerHTML = '';
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+
             if (data.length === 0) {
-                timelineBarsContainer.innerHTML = '<div class="text-center py-20 text-slate-400">해당하는 정책이 없습니다. 필터를 변경해보세요.</div>';
-                timelineBarsContainer.style.height = 'auto';
+                container.innerHTML = '<div class="text-center py-10 text-slate-400">조건에 맞는 정책이 없습니다.</div>';
                 return;
             }
 
-            // 카테고리별 정렬하여 타임라인 보기 좋게
-            const sortedData = [...data].sort((a,b) => a.category.localeCompare(b.category));
+            data.sort((a,b) => a.category.localeCompare(b.category));
 
-            sortedData.forEach((policy, index) => {
-                const pos = calculatePosition(policy.startDate, policy.endDate);
-                const colorClass = getCategoryColor(policy.category);
+            data.forEach(p => {
+                const yearStart = new Date(`${state.year}-01-01`).getTime();
+                const yearEnd = new Date(`${state.year}-12-31`).getTime();
+                const totalDur = yearEnd - yearStart;
+
+                let sTime = new Date(p.startDate).getTime();
+                let eTime = new Date(p.endDate).getTime();
                 
+                if (p.isAlways) {
+                    sTime = yearStart;
+                    eTime = yearEnd;
+                }
+
+                const visualStart = Math.max(sTime, yearStart);
+                const visualEnd = Math.min(eTime, yearEnd);
+
+                if (visualEnd < visualStart) return;
+
+                const left = ((visualStart - yearStart) / totalDur) * 100;
+                const width = ((visualEnd - visualStart) / totalDur) * 100;
+
+                let colorClass = "bg-slate-100 text-slate-700 border-slate-200";
+                if (p.category === "취업/직무") colorClass = "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200";
+                else if (p.category === "교육/장학") colorClass = "bg-green-100 text-green-700 border-green-200 hover:bg-green-200";
+                else if (p.category === "주거/금융") colorClass = "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200";
+                else if (p.category === "생활/복지") colorClass = "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200";
+                else if (p.category === "창업") colorClass = "bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200";
+
                 const bar = document.createElement('div');
-                bar.className = `absolute h-7 rounded shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 ring-blue-400 transition-all flex items-center px-2 truncate ${colorClass} ${policy.important ? 'ring-2 ring-red-400' : ''}`;
-                bar.style.left = pos.left;
-                bar.style.width = pos.width;
-                bar.style.top = `${index * (2.75)}rem`;
-                bar.style.minWidth = '40px';
-                bar.onclick = () => openModal(policy.id);
-                
-                bar.innerHTML = `
-                    ${policy.important ? '<span class="text-red-500 text-[10px] mr-1">★</span>' : ''}
-                    <span class="text-xs font-bold truncate">${policy.title}</span>
-                `;
-                timelineBarsContainer.appendChild(bar);
+                bar.className = `absolute h-8 rounded-md shadow-sm border cursor-pointer flex items-center px-2 timeline-bar ${colorClass}`;
+                bar.style.left = `${left}%`;
+                bar.style.width = `${Math.max(width, 2)}%`;
+                bar.style.position = 'relative';
+                bar.innerHTML = `<span class="text-xs font-bold truncate">${p.title}</span>`;
+                bar.onclick = () => openModal(p);
+
+                container.appendChild(bar);
             });
-            timelineBarsContainer.style.height = `${sortedData.length * 2.75 + 4}rem`;
         }
 
+        // [메인] 목록 리스트 렌더링
         function renderList(data) {
-            policyListContainer.innerHTML = '';
+            const container = document.getElementById('list-container');
+            document.getElementById('list-count').innerText = `(${data.length}건)`;
+            container.innerHTML = '';
+
             if (data.length === 0) {
-                policyListContainer.innerHTML = '<div class="text-center py-20 text-slate-400 md:col-span-3">해당하는 정책이 없습니다. 필터를 변경해보세요.</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400 bg-slate-50 rounded-xl border border-dashed">조건에 맞는 정책이 없습니다.</div>';
                 return;
             }
-            
-            data.sort((a,b) => b.important - a.important).forEach(policy => {
-                const colorClass = getCategoryColor(policy.category);
-                const status = getStatusInfo(policy.startDate, policy.endDate);
+
+            data.forEach(p => {
+                let colorClass = "text-slate-600 border-slate-200 bg-slate-50";
+                if (p.category === "취업/직무") colorClass = "text-blue-600 border-blue-200 bg-blue-50";
+                else if (p.category === "교육/장학") colorClass = "text-green-600 border-green-200 bg-green-50";
+                else if (p.category === "주거/금융") colorClass = "text-orange-600 border-orange-200 bg-orange-50";
+                else if (p.category === "생활/복지") colorClass = "text-purple-600 border-purple-200 bg-purple-50";
+                else if (p.category === "창업") colorClass = "text-yellow-600 border-yellow-200 bg-yellow-50";
 
                 const card = document.createElement('div');
-                card.className = "bg-white p-5 rounded-xl shadow-sm border hover:border-blue-300 transition-colors cursor-pointer group flex flex-col h-full relative";
-                if(policy.important) card.classList.add("ring-1", "ring-purple-200");
-                
-                card.onclick = () => openModal(policy.id);
-                
+                card.className = "card-hover bg-white p-6 rounded-xl border border-slate-200 shadow-sm cursor-pointer flex flex-col h-full transition-all";
+                card.onclick = () => openModal(p);
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs px-2 py-1 rounded font-bold ${colorClass}">${policy.category}</span>
-                        <span class="text-xs px-2 py-1 rounded font-bold ${status.color}">${status.text}</span>
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-[11px] font-bold px-2.5 py-1 rounded border ${colorClass}">${p.category}</span>
+                        <span class="text-xs text-slate-400 truncate max-w-[100px] bg-slate-50 px-2 py-1 rounded">${p.dept}</span>
                     </div>
-                    <h3 class="font-bold text-lg text-slate-800 group-hover:text-blue-600 mb-2 leading-snug">
-                        ${policy.important ? '<span class="text-purple-500 mr-1">★</span>' : ''}${policy.title}
-                    </h3>
-                    <p class="text-sm text-slate-500 mb-4 line-clamp-2 flex-grow">${policy.desc}</p>
-                    <div class="flex items-center justify-between text-xs text-slate-400 mt-auto pt-3 border-t border-slate-100">
-                        <span class="flex items-center gap-1">🗓️ ${policy.startDate} ~ ${policy.endDate}</span>
+                    <h3 class="font-bold text-lg text-slate-800 mb-2 leading-snug line-clamp-2 h-[3.5rem]">${p.title}</h3>
+                    <p class="text-sm text-slate-500 line-clamp-2 mb-4 flex-grow">${p.desc}</p>
+                    <div class="pt-4 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400 mt-auto">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span>${p.isAlways ? '상시모집' : p.startDate + ' ~ ' + p.endDate}</span>
                     </div>
                 `;
-                policyListContainer.appendChild(card);
+                container.appendChild(card);
             });
         }
 
-        // --- 6. 이벤트 핸들러 ---
-        
-        function handleNavClick(e) {
-            const button = e.target.closest('.nav-button');
-            if (button) {
-                state.currentView = button.dataset.view;
-                renderApp();
+        // --- 5. 이벤트 핸들러 ---
+        function switchView(viewName) {
+            state.view = viewName;
+            render();
+        }
+
+        function setYear(y) {
+            state.year = y;
+            render();
+        }
+
+        function setFilter(type, val) {
+            state.filters[type] = val;
+            document.querySelectorAll(`.${type}-filter`).forEach(btn => {
+                if (btn.dataset.val === val) {
+                    btn.classList.add('active');
+                    // 스타일 활성화
+                    if (type === 'status') btn.className = "filter-btn status-filter active px-3 py-1.5 rounded-full text-xs border bg-blue-600 text-white border-blue-600";
+                    else btn.className = "filter-btn category-filter active px-3 py-1.5 rounded-full text-xs border bg-slate-800 text-white border-slate-800";
+                } else {
+                    btn.classList.remove('active');
+                    btn.className = `filter-btn ${type}-filter px-3 py-1.5 rounded-full text-xs border bg-white text-slate-600 hover:bg-slate-50`;
+                }
+            });
+            render();
+        }
+
+        function updateTodayLine() {
+            const today = new Date();
+            if (today.getFullYear() === state.year) {
+                const start = new Date(`${state.year}-01-01`).getTime();
+                const end = new Date(`${state.year}-12-31`).getTime();
+                const now = today.getTime();
+                const pct = ((now - start) / (end - start)) * 100;
+                const line = document.getElementById('today-line');
+                line.style.left = `${pct}%`;
+                line.classList.remove('hidden');
+            } else {
+                document.getElementById('today-line').classList.add('hidden');
             }
         }
-        
-        function handleFilterClick(e) {
-            const button = e.target.closest('.filter-button');
-            if (button) {
-                const group = button.dataset.filterGroup;
-                const value = button.dataset.filterValue;
-                state.filters[group] = value;
-                renderApp();
-            }
+
+        function openModal(p) {
+            const m = document.getElementById('modal');
+            m.classList.remove('hidden');
+            setTimeout(() => m.firstElementChild.classList.remove('scale-95', 'opacity-0'), 10);
+            
+            document.getElementById('modal-title').innerText = p.title;
+            document.getElementById('modal-dept').innerText = p.dept;
+            document.getElementById('modal-category').innerText = p.category;
+            document.getElementById('modal-target').innerText = p.details.targetRaw;
+            document.getElementById('modal-restriction').innerText = p.details.restriction;
+            document.getElementById('modal-period').innerText = p.details.periodRaw;
+            document.getElementById('modal-apply').innerText = "신청일: " + p.details.applyRaw;
+            document.getElementById('modal-desc').innerText = p.desc;
+            document.getElementById('modal-age').innerText = p.details.age;
+            document.getElementById('modal-dept-detail').innerText = p.dept;
+
+            // D-day
+            const today = new Date();
+            const end = new Date(p.endDate);
+            const diff = Math.ceil((end - today) / (1000*60*60*24));
+            
+            let ddayText = "진행중";
+            if (p.isAlways) ddayText = "상시모집";
+            else if (diff < 0) ddayText = "마감";
+            else if (diff <= 30) ddayText = `D-${diff}`;
+
+            document.getElementById('modal-dday').innerText = ddayText;
+            
+            // 카테고리별 색상
+            let colorClass = "bg-slate-100 text-slate-600";
+            if (p.category === "취업/직무") colorClass = "bg-blue-100 text-blue-600";
+            else if (p.category === "교육/장학") colorClass = "bg-green-100 text-green-600";
+            else if (p.category === "주거/금융") colorClass = "bg-orange-100 text-orange-600";
+            else if (p.category === "생활/복지") colorClass = "bg-purple-100 text-purple-600";
+            else if (p.category === "창업") colorClass = "bg-yellow-100 text-yellow-600";
+            document.getElementById('modal-category').className = `text-xs px-2 py-1 rounded font-bold ${colorClass}`;
         }
-        
-        function openModal(policyId) {
-            const policy = policies.find(p => p.id == policyId);
-            if (!policy) return;
-            
-            const status = getStatusInfo(policy.startDate, policy.endDate);
-            
-            document.getElementById('modal-title').textContent = policy.title;
-            document.getElementById('modal-desc').textContent = policy.desc;
-            document.getElementById('modal-target').textContent = policy.target.join(', ');
-            document.getElementById('modal-period').textContent = `${policy.startDate} ~ ${policy.endDate}`;
-            document.getElementById('modal-dept').textContent = policy.dept;
-            document.getElementById('modal-link').href = "#"; // 실제 링크가 있다면 policy.link
-            
-            const categorySpan = document.getElementById('modal-category');
-            categorySpan.textContent = policy.category;
-            categorySpan.className = `text-xs px-2 py-1 rounded font-bold ${getCategoryColor(policy.category)}`;
-            
-            const ddaySpan = document.getElementById('modal-dday');
-            ddaySpan.textContent = status.text;
-            ddaySpan.className = `text-xs px-2 py-1 rounded font-bold ${status.color}`;
-            
-            modal.classList.remove('opacity-0', 'invisible');
-            modalContent.classList.remove('scale-95');
-        }
-        
+
         function closeModal() {
-            modal.classList.add('opacity-0', 'invisible');
-            modalContent.classList.add('scale-95');
+            const m = document.getElementById('modal');
+            m.firstElementChild.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => m.classList.add('hidden'), 200);
         }
 
-        function init() {
-            document.addEventListener('click', (e) => {
-                handleNavClick(e);
-                handleFilterClick(e);
-            });
-            
-            setTodayLinePosition();
-            renderApp();
-        }
-
-        document.addEventListener('DOMContentLoaded', init);
+        window.onload = init;
 
     </script>
 </body>
